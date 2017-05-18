@@ -9,6 +9,7 @@ var sprites = [
   `${path}/loser/jump.png`,
   `${path}/background.jpg`,
   `${path}/loser/attack.png`,
+  `${path}/Ad.PNG`,
 ]
 
 window.onload = function() {

@@ -155,6 +155,10 @@ var _Loser = __webpack_require__(22);
 
 var _Loser2 = _interopRequireDefault(_Loser);
 
+var _FallingStuff = __webpack_require__(25);
+
+var _FallingStuff2 = _interopRequireDefault(_FallingStuff);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var BestGameEver = function () {
@@ -164,8 +168,12 @@ var BestGameEver = function () {
     this._initCanvas();
     this.lastTime = Date.now();
     this.foo = "";
-    this.Loser = new _Loser2.default(this.ctx);
+    this.HitOrMissCallback = this.HitOrMissCallback.bind(this);
+    this.FallingStuff = new _FallingStuff2.default(this.ctx, this.HitOrMissCallback);
+    this.Loser = new _Loser2.default(this.ctx, this.FallingStuff);
     this.Start = this.Start.bind(this);
+    this.hits = 0;
+    this.miss = 0;
   }
 
   (0, _createClass3.default)(BestGameEver, [{
@@ -194,12 +202,33 @@ var BestGameEver = function () {
       this._renderBackground();
       this.Loser.Update(dt);
       this.Loser.Render();
+      this.FallingStuff.Update(dt);
+      this.FallingStuff.Render();
+      this._printScore();
       window.requestAnimationFrame(this.Start);
+    }
+  }, {
+    key: 'HitOrMissCallback',
+    value: function HitOrMissCallback(hit) {
+      console.log(this);
+      if (hit) this.hits++;else this.miss++;
     }
   }, {
     key: '_renderBackground',
     value: function _renderBackground() {
       this.ctx.drawImage(Resources.get("assets/sprites/background.jpg"), 0, 0, window.innerWidth, window.innerHeight);
+    }
+  }, {
+    key: '_printScore',
+    value: function _printScore() {
+      this.ctx.save();
+      this.ctx.fillStyle = "#D2312E";
+      this.ctx.font = "30px Arial";
+      this.ctx.textAlign = "end";
+      this.ctx.fillText('$' + this.hits * 100, window.innerWidth - 15, 80);
+      var ctr = this.miss > 0 ? this.hits / (this.miss + this.hits) * 100 : 100;
+      this.ctx.fillText('CTR: ' + Math.round(ctr) + '%', window.innerWidth - 15, 50);
+      this.ctx.restore();
     }
   }]);
   return BestGameEver;
@@ -223,7 +252,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 __webpack_require__(23);
 
 var path = "assets/sprites";
-var sprites = [path + '/loser/walk.png', path + '/loser/run.png', path + '/loser/idle.png', path + '/loser/jump.png', path + '/background.jpg', path + '/loser/attack.png'];
+var sprites = [path + '/loser/walk.png', path + '/loser/run.png', path + '/loser/idle.png', path + '/loser/jump.png', path + '/background.jpg', path + '/loser/attack.png', path + '/Ad.PNG'];
 
 window.onload = function () {
   Resources.load(sprites);
@@ -503,10 +532,11 @@ var _Constants = __webpack_require__(24);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var Loser = function () {
-  function Loser(context) {
+  function Loser(context, fallingStuff) {
     (0, _classCallCheck3.default)(this, Loser);
 
     this.context = context;
+    this.FallingStuff = fallingStuff;
 
     this._setSprites();
 
@@ -596,6 +626,7 @@ var Loser = function () {
         if (this.currentPosition.x < sprite.width * -1) this.currentPosition.x = window.innerWidth + sprite.width;
         this._animateJump();
       }
+      this.FallingStuff.CheckCollisions(this.currentPosition, this._getCurrentSprite());
     }
   }, {
     key: "_animateJump",
@@ -614,6 +645,7 @@ var Loser = function () {
   }, {
     key: "_walkOrRun",
     value: function _walkOrRun(direction, startRunning) {
+      if (this.IsJumping()) return;
       if (this.IsRunning() && direction == this.direction) return;
       if (!startRunning && this.IsWalking() && direction == this.direction) return;
       this.currentSprite = startRunning ? "run" : "walk";
@@ -673,7 +705,7 @@ var Loser = function () {
       this.sprites = {
         walk: {
           url: path + "/walk.png",
-          speed: 100,
+          speed: 200,
           width: 55,
           height: 129,
           name: 'walk'
@@ -687,7 +719,7 @@ var Loser = function () {
         },
         run: {
           url: path + "/run.png",
-          speed: 300,
+          speed: 600,
           width: 112,
           height: 128,
           name: 'run'
@@ -871,6 +903,158 @@ var DIRECTION = exports.DIRECTION = {
 	LEFT: 2,
 	RIGHT: 3
 };
+
+/***/ }),
+/* 25 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _classCallCheck2 = __webpack_require__(9);
+
+var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
+
+var _createClass2 = __webpack_require__(10);
+
+var _createClass3 = _interopRequireDefault(_createClass2);
+
+var _Ads = __webpack_require__(26);
+
+var _Ads2 = _interopRequireDefault(_Ads);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var FallingStuff = function () {
+  function FallingStuff(context, HitOrMissCallback) {
+    (0, _classCallCheck3.default)(this, FallingStuff);
+
+    this.context = context;
+    this.HitOrMissCallback = HitOrMissCallback;
+    this.ads = [];
+    this.lastAdTime = Date.now();
+  }
+
+  (0, _createClass3.default)(FallingStuff, [{
+    key: 'Update',
+    value: function Update(dt) {
+      var now = Date.now();
+      if (now - this.lastAdTime > 2500) {
+        this.ads.push(new _Ads2.default(this.context));
+        this.lastAdTime = now;
+      }
+      for (var i = 0; i < this.ads.length; i++) {
+        if (this.ads[i].position.y > window.innerHeight) {
+          this.ads.splice(i, 1);
+          this.HitOrMissCallback(false);
+        } else {
+          this.ads[i].Update(dt);
+        }
+      }
+    }
+  }, {
+    key: 'Render',
+    value: function Render(dt) {
+      for (var i = 0; i < this.ads.length; i++) {
+        this.ads[i].Render();
+      }
+    }
+  }, {
+    key: 'CheckCollisions',
+    value: function CheckCollisions(playerPosition, playerSprite) {
+      var playerRectangle = {
+        x1: playerPosition.x,
+        y1: playerPosition.y,
+        x2: playerPosition.x + playerSprite.width,
+        y2: playerPosition.y + playerSprite.height
+      };
+      for (var i = 0; i < this.ads.length; i++) {
+        var ad = this.ads[i];
+        var adRectangle = {
+          x1: ad.position.x,
+          y1: ad.position.y,
+          x2: ad.position.x + ad.size.width,
+          y2: ad.position.y + ad.size.height
+        };
+        if (this.RectangleIntersection(playerRectangle, adRectangle)) {
+          this.ads.splice(i, 1);
+          this.HitOrMissCallback(true);
+          i--;
+        }
+      }
+    }
+  }, {
+    key: 'RectangleIntersection',
+    value: function RectangleIntersection(rect1, rect2) {
+      if (rect1.x1 < rect2.x2 && rect1.x2 > rect2.x1 && rect1.y1 < rect2.y2 && rect1.y2 > rect2.y1) {
+        return true;
+      }
+      return false;
+    }
+  }]);
+  return FallingStuff;
+}();
+
+exports.default = FallingStuff;
+
+/***/ }),
+/* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _classCallCheck2 = __webpack_require__(9);
+
+var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
+
+var _createClass2 = __webpack_require__(10);
+
+var _createClass3 = _interopRequireDefault(_createClass2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var Ads = function () {
+  function Ads(context) {
+    (0, _classCallCheck3.default)(this, Ads);
+
+    this.context = context;
+    this.sprite = 'assets/sprites/Ad.PNG';
+    this.speed = 600;
+    this.position = {
+      x: Math.random() * window.innerWidth,
+      y: -200
+    };
+    this.size = {
+      height: 197,
+      width: 253
+    };
+    this.Render = this.Render.bind(this);
+  }
+
+  (0, _createClass3.default)(Ads, [{
+    key: 'Render',
+    value: function Render() {
+      this.context.drawImage(Resources.get(this.sprite), this.position.x, this.position.y);
+    }
+  }, {
+    key: 'Update',
+    value: function Update(dt) {
+      this.position.y += this.speed * dt;
+    }
+  }]);
+  return Ads;
+}();
+
+exports.default = Ads;
 
 /***/ })
 /******/ ]);

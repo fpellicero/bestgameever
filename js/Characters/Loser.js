@@ -1,8 +1,9 @@
 import {DIRECTION} from '../Helpers/Constants';
 
 export default class Loser {
-  constructor(context) {
+  constructor(context, fallingStuff) {
       this.context = context;
+      this.FallingStuff = fallingStuff;
 
       this._setSprites();
 
@@ -83,6 +84,7 @@ export default class Loser {
       if(this.currentPosition.x < sprite.width*-1)  this.currentPosition.x = window.innerWidth + sprite.width
       this._animateJump();
     }
+    this.FallingStuff.CheckCollisions(this.currentPosition, this._getCurrentSprite());
   }
 
   _animateJump(){
@@ -99,6 +101,7 @@ export default class Loser {
   }
 
   _walkOrRun(direction, startRunning) {
+    if(this.IsJumping()) return;
     if(this.IsRunning() && direction == this.direction) return;
     if(!startRunning && this.IsWalking() && direction == this.direction) return;
     this.currentSprite = startRunning ? "run" : "walk";
@@ -151,7 +154,7 @@ export default class Loser {
     this.sprites = {
       walk: {
         url: `${path}/walk.png`,
-        speed: 100,
+        speed: 200,
         width: 55,
         height: 129,
         name: 'walk'
@@ -165,7 +168,7 @@ export default class Loser {
       },
       run: {
         url: `${path}/run.png`,
-        speed: 300,
+        speed: 600,
         width: 112,
         height: 128,
         name: 'run'
